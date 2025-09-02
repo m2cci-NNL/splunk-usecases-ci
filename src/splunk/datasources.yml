@@ -1,0 +1,4 @@
+datasources:
+  - name: aws_cloudtrail
+    index: aws_cloudtrail
+    sourcetypes: ["aws:cloudtrail"]

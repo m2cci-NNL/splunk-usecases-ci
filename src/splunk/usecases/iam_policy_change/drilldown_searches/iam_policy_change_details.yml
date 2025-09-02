@@ -1,0 +1,6 @@
+name: "IAM Policy Change - Details"
+search: |
+  index=aws_cloudtrail sourcetype=aws:cloudtrail
+  (eventName=Put*Policy OR eventName=Attach*Policy OR eventName=Delete*Policy)
+  | eval user=coalesce('userIdentity.arn','userIdentity.userName')
+  | table _time user eventName requestParameters responseElements sourceIPAddress awsRegion userAgent

@@ -1,0 +1,7 @@
+name: "AWS Console Login - Failure Details"
+search: |
+  index=aws_cloudtrail sourcetype=aws:cloudtrail
+  eventName=ConsoleLogin responseElements.ConsoleLogin="Failure"
+  | eval user=coalesce('userIdentity.arn','userIdentity.userName')
+  | table _time user sourceIPAddress awsRegion errorMessage additionalEventData.MFAUsed userAgent
+  | sort - _time

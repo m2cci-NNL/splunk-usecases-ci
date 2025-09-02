@@ -1,0 +1,15 @@
+name: "IAM Policy Change - Suspicious"
+description: "Detects changes to IAM policies which may indicate privilege escalation."
+search: |
+  index=aws_cloudtrail sourcetype=aws:cloudtrail
+  (eventName=Put*Policy OR eventName=Attach*Policy OR eventName=Delete*Policy)
+  | eval user=coalesce('userIdentity.arn','userIdentity.userName')
+  | stats count min(_time) as firstSeen max(_time) as lastSeen values(sourceIPAddress) as src_ip by user, eventName, awsRegion
+  | eval duration=lastSeen-firstSeen
+  | where count>=1
+cron_schedule: "*/10 * * * *"
+earliest_time: "-15m"
+latest_time: "now"
+severity: "high"
+mitre_technique: "T1098"
+notable: true

@@ -1,0 +1,14 @@
+name: "AWS Console Login - Failure Burst"
+description: "Multiple failed ConsoleLogins for the same user and IP within 10 minutes."
+search: |
+  index=aws_cloudtrail sourcetype=aws:cloudtrail
+  eventName=ConsoleLogin responseElements.ConsoleLogin="Failure"
+  | eval user=coalesce('userIdentity.arn','userIdentity.userName')
+  | stats count values(errorMessage) as errors, values(userAgent) as user_agents by user, sourceIPAddress, awsRegion, bin(_time, 10m)
+  | where count>=10
+cron_schedule: "*/5 * * * *"
+earliest_time: "-30m"
+latest_time: "now"
+severity: "medium"
+mitre_technique: "T1110"
+notable: true
