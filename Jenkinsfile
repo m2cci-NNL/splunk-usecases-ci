@@ -2,7 +2,9 @@ pipeline {
   agent any
   environment {
     APP_NAME = 'socgen-usecases'
+    TA_NAME  = 'TA_aws_cloudtrail_custom'
     APP_DIR  = "apps/${APP_NAME}"
+    TA_DIR   = "apps/${TA_NAME}"
     VERSION  = "${env.BUILD_NUMBER}"
     SPLUNK_HOST = credentials('splunk_host')
     SPLUNK_AUTH = credentials('splunk_auth')
@@ -16,21 +18,17 @@ pipeline {
     stage('Validate configs') {
       steps { sh 'bash ci/validate_splunk_conf.sh apps/socgen-usecases' }
     }
-    stage('AppInspect (optional)') {
+    stage('Package TA & App') {
       steps {
-        sh 'bash -lc "cd apps && tar -czf ${APP_NAME}.tgz ${APP_NAME} && (splunk-appinspect inspect ${APP_NAME}.tgz --mode precert --output-file appinspect_report.json || true)"'
-        archiveArtifacts artifacts: "apps/${APP_NAME}.tgz,apps/appinspect_report.json", fingerprint: true, allowEmptyArchive: true
+        sh 'bash ci/package_app.sh ${TA_DIR} ${VERSION}'
+        sh 'bash ci/package_app.sh ${APP_DIR} ${VERSION}'
+        archiveArtifacts artifacts: "dist/*-${VERSION}.tgz", fingerprint: true
       }
     }
-    stage('Package') {
-      steps {
-        sh 'bash ci/package_app.sh apps/socgen-usecases ${VERSION}'
-        archiveArtifacts artifacts: "dist/${APP_NAME}-${VERSION}.tgz", fingerprint: true
-      }
-    }
-    stage('Deploy DEV') {
+    stage('Deploy DEV (TA puis App)') {
       when { branch 'dev' }
       steps {
+        sh 'bash ci/deploy/deploy_standalone.sh dist/${TA_NAME}-${VERSION}.tgz "$SPLUNK_HOST" "$SPLUNK_AUTH"'
         sh 'bash ci/deploy/deploy_standalone.sh dist/${APP_NAME}-${VERSION}.tgz "$SPLUNK_HOST" "$SPLUNK_AUTH"'
       }
     }
@@ -44,6 +42,7 @@ pipeline {
       when { branch 'main' }
       steps {
         input message: "Confirmer déploiement PROD ?", ok: "Déployer"
+        sh 'bash ci/deploy/deploy_shcluster.sh dist/${TA_NAME}-${VERSION}.tgz "$SPLUNK_HOST" "$SPLUNK_AUTH"'
         sh 'bash ci/deploy/deploy_shcluster.sh dist/${APP_NAME}-${VERSION}.tgz "$SPLUNK_HOST" "$SPLUNK_AUTH"'
       }
     }
